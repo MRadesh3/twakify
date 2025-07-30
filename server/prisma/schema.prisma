@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     Int                      @id @default(autoincrement())
+  email                  String                   @unique
+  about                  String                   @default("")
+  name                   String
+  profilePicture         String                   @default("")
+  sentMessages           Messages[]               @relation("sentMessages")
+  receivedMessages       Messages[]               @relation("receivedMessages")
+  groupMembers           GroupMember[]
+  adderInfo              GroupMember[]            @relation("adderInfo")
+  groupMessages          GroupMessage[]
+  Groups                 Groups[]
+  GroupMessageReadStatus GroupMessageReadStatus[]
+}
+
+model Messages {
+  id            Int       @id @default(autoincrement())
+  sender        User      @relation("sentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId      Int
+  receiver      User      @relation("receivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId    Int
+  type          String    @default("text")
+  message       String
+  messageAnswer String    @default("")
+  iv            String    @default("")
+  messageStatus String    @default("sent")
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+  readAt        DateTime?
+  editedAt      DateTime?
+}
+
+model Groups {
+  id             Int            @id @default(autoincrement())
+  name           String         @unique
+  about          String
+  profilePicture String         @default("")
+  groupType      GroupType      @default(PUBLIC)
+  creater        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy      Int
+  createdAt      DateTime       @default(now())
+  deletedAt      DateTime?
+  groupMembers   GroupMember[]
+  groupMessages  GroupMessage[]
+}
+
+model GroupMember {
+  id        Int       @id @default(autoincrement())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  group     Groups    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   Int
+  role      GroupRole @default(MEMBER)
+  adder     User      @relation("adderInfo", fields: [addedBy], references: [id], onDelete: Cascade)
+  addedBy   Int
+  joinedAt  DateTime  @default(now())
+  removedAt DateTime?
+
+  @@unique([userId, groupId])
+}
+
+model GroupMessage {
+  id                     Int                      @id @default(autoincrement())
+  group                  Groups                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId                Int
+  sender                 User                     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId               Int
+  type                   String                   @default("text")
+  message                String
+  messageAnswer          String                   @default("")
+  iv                     String                   @default("")
+  createdAt              DateTime                 @default(now())
+  deletedAt              DateTime?
+  // readAt                 DateTime?
+  // editedAt               DateTime?
+  groupMessageReadStatus GroupMessageReadStatus[]
+}
+
+model GroupMessageReadStatus {
+  id        Int          @id @default(autoincrement())
+  message   GroupMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  readAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@unique([messageId, userId])
+}
+
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
+enum GroupType {
+  PUBLIC
+  PRIVATE
+}
